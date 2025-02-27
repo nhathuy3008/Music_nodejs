@@ -1,0 +1,30 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors'); // Thêm gói cors
+const accountRoutes = require('./routes/accountRoutes');
+const cloudinary = require('./cloudinary');
+const categoryRoutes= require("./routes/categoryRoutes")
+const songRoutes= require("./routes/songRoutes")
+require('dotenv').config(); // Nạp biến môi trường từ tệp .env
+
+const app = express();
+const PORT = process.env.PORT || 3000; // Lấy cổng từ biến môi trường hoặc mặc định là 3000
+
+app.use(cors()); // Thêm middleware CORS
+app.use(express.json()); // Middleware để phân tích cú pháp JSON
+
+// Định tuyến API
+app.use('/api/accounts', accountRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api', songRoutes);
+// Kết nối đến MongoDB
+mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => {
+        console.log('Kết nối MongoDB thành công');
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    })
+    .catch(err => {
+        console.error('Kết nối MongoDB thất bại', err);
+    });

@@ -3,20 +3,29 @@ const mongoose = require('mongoose');
 const cors = require('cors'); // Thêm gói cors
 const accountRoutes = require('./routes/accountRoutes');
 const cloudinary = require('./cloudinary');
-const categoryRoutes= require("./routes/categoryRoutes")
-const songRoutes= require("./routes/songRoutes")
+const categoryRoutes = require("./routes/categoryRoutes");
+const songRoutes = require("./routes/songRoutes");
 require('dotenv').config(); // Nạp biến môi trường từ tệp .env
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Lấy cổng từ biến môi trường hoặc mặc định là 3000
 
-app.use(cors()); // Thêm middleware CORS
+// Cấu hình CORS
+const corsOptions = {
+    origin: ['http://localhost:3000', 'http://localhost:52957'], // Địa chỉ frontend
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Các phương thức HTTP được phép
+    allowedHeaders: ['Content-Type'], // Các header được phép
+    credentials: true, // Cho phép cookie và thông tin xác thực
+};
+
+app.use(cors(corsOptions)); // Thêm middleware CORS với cấu hình
 app.use(express.json()); // Middleware để phân tích cú pháp JSON
 
 // Định tuyến API
 app.use('/api/accounts', accountRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api', songRoutes);
+
 // Kết nối đến MongoDB
 mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {

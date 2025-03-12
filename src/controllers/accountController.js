@@ -125,6 +125,7 @@ const login = async (req, res) => {
     // Nếu đăng nhập thành công, trả về thông tin tài khoản
     res.status(200).json({
         id: account._id,
+        fullName: account.fullName,
         image: account.image, // Trả về URL hình ảnh
         message: "Đăng nhập thành công",
         status: "thành công"
@@ -172,10 +173,11 @@ const getAllAccounts = async (req, res) => {
 
 // Cập nhật tài khoản
 const updateAccount = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; // id từ tham số URL
     const { fullName, password, image } = req.body;
 
     try {
+        // Tìm tài khoản theo _id
         const account = await Account.findById(id);
         if (!account) {
             return res.status(404).json({
@@ -184,11 +186,15 @@ const updateAccount = async (req, res) => {
             });
         }
 
-        // Cập nhật các trường
-        if (fullName) account.fullName = fullName;
+        // Kiểm tra và cập nhật fullName
+        if (fullName) {
+            console.log('Updating fullName from:', account.fullName, 'to:', fullName);
+            account.fullName = fullName; // Cập nhật fullName
+        }
 
         // Cập nhật mật khẩu
         if (password) {
+            console.log('Updating password.');
             account.password = await bcrypt.hash(password, 10);
         }
 
@@ -202,8 +208,10 @@ const updateAccount = async (req, res) => {
                     const base64Image = await convertImageUrlToBase64(image);
                     uploadedImage = await uploadImageToCloudinary(base64Image);
                 }
+                console.log('Updating image from:', account.image, 'to:', uploadedImage);
                 account.image = uploadedImage; // Cập nhật hình ảnh
             } catch (error) {
+                console.error('Image upload error:', error);
                 return res.status(500).json({
                     status: "thất bại",
                     message: "Đã xảy ra lỗi khi tải lên hình ảnh."
@@ -211,20 +219,24 @@ const updateAccount = async (req, res) => {
             }
         }
 
-        await account.save();
+        // Gọi save() để lưu thay đổi
+        const updatedAccount = await account.save();
+        console.log('Updated Account:', updatedAccount); // Ghi log tài khoản đã cập nhật
 
         res.status(200).json({
             status: "thành công",
             message: "Cập nhật tài khoản thành công!",
-            account
+            account: updatedAccount
         });
     } catch (error) {
+        console.error('Error updating account:', error);
         return res.status(500).json({
             status: "thất bại",
             message: "Đã xảy ra lỗi khi cập nhật tài khoản."
         });
     }
 };
+
 
 // Tải ảnh lên Cloudinary
 const uploadImageToCloudinary = async (image) => {

@@ -53,7 +53,15 @@ const createSong = async (req, res) => {
         return res.status(400).json({ message: error.message });
     }
 };
-
+// Lấy tất cả bài hát
+const getAllSongs = async (req, res) => {
+    try {
+        const songs = await Song.find(); // Lấy tất cả bài hát từ cơ sở dữ liệu
+        return res.status(200).json(songs); // Trả về danh sách bài hát
+    } catch (error) {
+        return res.status(500).json({ message: error.message }); // Xử lý lỗi
+    }
+};
 // Cập nhật nhạc
 const updateSong = async (req, res) => {
     const { id } = req.params;
@@ -130,5 +138,6 @@ module.exports = {
     updateSong,
     deleteSong,
     searchSongs,
-    playSongById // Đảm bảo hàm này có ở đây
+    playSongById, // Đảm bảo hàm này có ở đây
+    getAllSongs
 };

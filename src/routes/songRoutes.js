@@ -10,5 +10,6 @@ router.put('/songs/:id', songController.updateSong); // Cập nhật nhạc
 router.delete('/songs/:id', songController.deleteSong); // Xóa nhạc
 router.get('/songs/search/:key', songController.searchSongs);
 router.get('/songs/play/:id', songController.playSongById); // Thêm route này
+router.get('/songs', songController.getAllSongs); // Route mới để lấy tất cả bài hát
 
 module.exports = router;

@@ -290,6 +290,111 @@ const validatePassword = async (req, res) => {
         });
     }
 };
+// Gửi mã xác minh để đặt lại mật khẩu
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({
+                status: "thất bại",
+                message: "Email không tồn tại."
+            });
+        }
+
+        // Tạo mã xác minh ngẫu nhiên
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        account.verificationToken = resetCode; // Lưu mã xác minh vào tài khoản
+        await account.save();
+
+        await sendVerificationEmail(email, resetCode); // Gửi email chứa mã xác minh
+        res.status(200).json({
+            status: "thành công",
+            message: "Mã xác minh đã được gửi đến email của bạn."
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "thất bại",
+            message: "Đã xảy ra lỗi khi gửi mã xác minh."
+        });
+    }
+};
+
+// Đặt lại mật khẩu
+const resetPassword = async (req, res) => {
+    const { email, verificationCode, newPassword } = req.body;
+
+    try {
+        const account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({
+                status: "thất bại",
+                message: "Tài khoản không tồn tại."
+            });
+        }
+
+        // Kiểm tra mã xác minh trong cơ sở dữ liệu
+        if (account.verificationToken !== verificationCode) {
+            return res.status(400).json({
+                status: "thất bại",
+                message: "Mã xác minh không hợp lệ."
+            });
+        }
+
+        // Cập nhật mật khẩu
+        account.password = await bcrypt.hash(newPassword, 10);
+        account.verificationToken = null; // Xóa mã xác minh sau khi đã sử dụng
+        await account.save();
+
+        res.status(200).json({
+            status: "thành công",
+            message: "Mật khẩu đã được thay đổi thành công."
+        });
+    } catch (error) {
+        console.error(error); // Log lỗi để kiểm tra
+        return res.status(500).json({
+            status: "thất bại",
+            message: "Đã xảy ra lỗi khi đặt lại mật khẩu."
+        });
+    }
+};
+// Xác minh mã xác nhận
+const verifyCode = async (req, res) => {
+    const { email, verificationCode } = req.body; // Lấy email và mã từ body
+
+    try {
+        const account = await Account.findOne({ email });
+
+        if (!account) {
+            return res.status(404).json({
+                status: "thất bại",
+                message: "Tài khoản không tồn tại."
+            });
+        }
+
+        // Kiểm tra mã xác minh
+        if (account.verificationToken === verificationCode) {
+            account.enabled = true; // Kích hoạt tài khoản
+            account.verificationToken = null; // Xóa mã xác thực
+            await account.save();
+            return res.status(200).json({
+                status: "thành công",
+                message: "Tài khoản đã được xác thực thành công!"
+            });
+        } else {
+            return res.status(400).json({
+                status: "thất bại",
+                message: "Mã xác thực không đúng."
+            });
+        }
+    } catch (error) {
+        return res.status(500).json({
+            status: "thất bại",
+            message: "Đã xảy ra lỗi khi xác thực tài khoản."
+        });
+    }
+};
 
 module.exports = {
     createAccount,
@@ -298,5 +403,8 @@ module.exports = {
     getAllAccounts,
     getAccountById,
     updateAccount,
-    validatePassword
+    validatePassword,
+    forgotPassword,     // Thêm vào để xuất khẩu phương thức forgotPassword
+    resetPassword,
+    verifyCode
 };

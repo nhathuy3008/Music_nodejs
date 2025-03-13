@@ -5,6 +5,7 @@ const accountRoutes = require('./routes/accountRoutes');
 const cloudinary = require('./cloudinary');
 const categoryRoutes = require("./routes/categoryRoutes");
 const songRoutes = require("./routes/songRoutes");
+const favoriteRoutes = require('./routes/favoriteRoutes');
 require('dotenv').config(); // Nạp biến môi trường từ tệp .env
 
 const app = express();
@@ -25,6 +26,7 @@ app.use(express.json()); // Middleware để phân tích cú pháp JSON
 app.use('/api/accounts', accountRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api', songRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Kết nối đến MongoDB
 mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })

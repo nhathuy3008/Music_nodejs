@@ -51,12 +51,7 @@ const createAccount = async (req, res) => {
     }
 };
 
-// Hàm chuyển đổi URL thành base64
-const convertImageUrlToBase64 = async (url) => {
-    const response = await fetch(url);
-    const buffer = await response.buffer();
-    return `data:image/jpeg;base64,${buffer.toString('base64')}`;
-};
+
 
 // Xác thực tài khoản
 const verifyAccount = async (req, res) => {
@@ -172,57 +167,137 @@ const getAllAccounts = async (req, res) => {
 };
 
 // Cập nhật tài khoản
+// const updateAccount = async (req, res) => {
+//     const { id } = req.params; // id từ tham số URL
+//     const { fullName, password, image } = req.body;
+
+//     try {
+//         // Tìm tài khoản theo _id
+//         const account = await Account.findById(id);
+//         if (!account) {
+//             return res.status(404).json({
+//                 status: "thất bại",
+//                 message: "Tài khoản không tồn tại."
+//             });
+//         }
+
+//         // Kiểm tra và cập nhật fullName
+//         if (fullName) {
+//             console.log('Updating fullName from:', account.fullName, 'to:', fullName);
+//             account.fullName = fullName; // Cập nhật fullName
+//         }
+
+//         // Cập nhật mật khẩu
+//         if (password) {
+//             console.log('Updating password.');
+//             account.password = await bcrypt.hash(password, 10);
+//         }
+
+//         // Cập nhật hình ảnh
+//         if (image) {
+//             try {
+//                 let uploadedImage;
+//                 if (image.startsWith("data:")) {
+//                     uploadedImage = await uploadImageToCloudinary(image);
+//                 } else {
+//                     const base64Image = await convertImageUrlToBase64(image);
+//                     uploadedImage = await uploadImageToCloudinary(base64Image);
+//                 }
+//                 console.log('Updating image from:', account.image, 'to:', uploadedImage);
+//                 account.image = uploadedImage; // Cập nhật hình ảnh
+//             } catch (error) {
+//                 console.error('Image upload error:', error);
+//                 return res.status(500).json({
+//                     status: "thất bại",
+//                     message: "Đã xảy ra lỗi khi tải lên hình ảnh."
+//                 });
+//             }
+//         }
+
+//         // Gọi save() để lưu thay đổi
+//         const updatedAccount = await account.save();
+//         console.log('Updated Account:', updatedAccount); // Ghi log tài khoản đã cập nhật
+
+//         res.status(200).json({
+//             status: "thành công",
+//             message: "Cập nhật tài khoản thành công!",
+//             account: updatedAccount
+//         });
+//     } catch (error) {
+//         console.error('Error updating account:', error);
+//         return res.status(500).json({
+//             status: "thất bại",
+//             message: "Đã xảy ra lỗi khi cập nhật tài khoản."
+//         });
+//     }
+// };
+
+
+// // Tải ảnh lên Cloudinary
+// const uploadImageToCloudinary = async (image) => {
+//     return new Promise((resolve, reject) => {
+//         if (image.startsWith("data:")) {
+//             const base64Image = image.split(",")[1];
+//             cloudinary.uploader.upload_stream({ resource_type: 'image' }, (error, result) => {
+//                 if (error) {
+//                     console.error('Error uploading to Cloudinary:', error);
+//                     return reject(error);
+//                 }
+//                 resolve(result.secure_url); // Trả về URL hình ảnh đã tải lên
+//             }).end(Buffer.from(base64Image, 'base64'));
+//         } else {
+//             resolve(image); // Nếu không phải base64, trả về URL
+//         }
+//     });
+// };
+// // Hàm chuyển đổi URL thành base64
+// const convertImageUrlToBase64 = async (url) => {
+//     const response = await fetch(url);
+//     const buffer = await response.buffer();
+//     return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+// };
+// Chức năng để chuyển đổi URL hình ảnh thành base64
+const convertImageUrlToBase64 = async (url) => {
+    const response = await fetch(url);
+    const buffer = await response.buffer();
+    return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+};
+
+// Chức năng cập nhật tài khoản
+// Chức năng cập nhật tài khoản
 const updateAccount = async (req, res) => {
-    const { id } = req.params; // id từ tham số URL
-    const { fullName, password, image } = req.body;
+    const { id } = req.params;
+    const { fullName, password, image } = req.body; // Nhận ảnh base64 từ frontend
 
     try {
-        // Tìm tài khoản theo _id
         const account = await Account.findById(id);
         if (!account) {
-            return res.status(404).json({
-                status: "thất bại",
-                message: "Tài khoản không tồn tại."
-            });
+            return res.status(404).json({ status: "thất bại", message: "Tài khoản không tồn tại." });
         }
 
-        // Kiểm tra và cập nhật fullName
+        // Cập nhật tên đầy đủ
         if (fullName) {
-            console.log('Updating fullName from:', account.fullName, 'to:', fullName);
-            account.fullName = fullName; // Cập nhật fullName
+            account.fullName = fullName;
         }
 
         // Cập nhật mật khẩu
         if (password) {
-            console.log('Updating password.');
             account.password = await bcrypt.hash(password, 10);
         }
 
-        // Cập nhật hình ảnh
-        if (image) {
+        // Xử lý ảnh từ base64
+        if (image && image.startsWith('data:image')) { // Kiểm tra có phải base64 không
             try {
-                let uploadedImage;
-                if (image.startsWith("data:")) {
-                    uploadedImage = await uploadImageToCloudinary(image);
-                } else {
-                    const base64Image = await convertImageUrlToBase64(image);
-                    uploadedImage = await uploadImageToCloudinary(base64Image);
-                }
-                console.log('Updating image from:', account.image, 'to:', uploadedImage);
-                account.image = uploadedImage; // Cập nhật hình ảnh
+                const uploadedImage = await uploadImageToCloudinary(image); // Upload base64 trực tiếp
+                account.image = uploadedImage;
             } catch (error) {
                 console.error('Image upload error:', error);
-                return res.status(500).json({
-                    status: "thất bại",
-                    message: "Đã xảy ra lỗi khi tải lên hình ảnh."
-                });
+                return res.status(500).json({ status: "thất bại", message: "Đã xảy ra lỗi khi tải lên hình ảnh." });
             }
         }
 
-        // Gọi save() để lưu thay đổi
+        // Lưu tài khoản đã cập nhật
         const updatedAccount = await account.save();
-        console.log('Updated Account:', updatedAccount); // Ghi log tài khoản đã cập nhật
-
         res.status(200).json({
             status: "thành công",
             message: "Cập nhật tài khoản thành công!",
@@ -230,29 +305,21 @@ const updateAccount = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating account:', error);
-        return res.status(500).json({
-            status: "thất bại",
-            message: "Đã xảy ra lỗi khi cập nhật tài khoản."
-        });
+        return res.status(500).json({ status: "thất bại", message: "Đã xảy ra lỗi khi cập nhật tài khoản." });
     }
 };
 
 
-// Tải ảnh lên Cloudinary
-const uploadImageToCloudinary = async (image) => {
+// Chức năng upload hình ảnh lên Cloudinary
+const uploadImageToCloudinary = async (base64Image) => {
     return new Promise((resolve, reject) => {
-        if (image.startsWith("data:")) {
-            const base64Image = image.split(",")[1];
-            cloudinary.uploader.upload_stream({ resource_type: 'image' }, (error, result) => {
-                if (error) {
-                    console.error('Error uploading to Cloudinary:', error);
-                    return reject(error);
-                }
-                resolve(result.secure_url); // Trả về URL hình ảnh đã tải lên
-            }).end(Buffer.from(base64Image, 'base64'));
-        } else {
-            resolve(image); // Nếu không phải base64, trả về URL
-        }
+        cloudinary.uploader.upload(base64Image, { resource_type: 'image' }, (error, result) => {
+            if (error) {
+                console.error('Error uploading to Cloudinary:', error);
+                return reject(error);
+            }
+            resolve(result.secure_url);
+        });
     });
 };
 

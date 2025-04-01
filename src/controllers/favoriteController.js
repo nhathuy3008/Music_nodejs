@@ -49,12 +49,16 @@ const countLikesForSong = async (req, res) => {
     try {
         const { songId } = req.params;
         const likeCount = await Favorite.countDocuments({ song: songId });
+
+        // In ra tổng lượt thích
+        console.log(`Tổng lượt thích cho bài hát với ID ${songId}: ${likeCount}`);
+
         return res.status(200).json(likeCount);
     } catch (error) {
+        console.error(error); // In lỗi ra console để dễ theo dõi
         return res.status(500).json({ message: error.message });
     }
 };
-
 const unlikeSong = async (req, res) => {
     try {
         const { accountId, songId } = req.params;
@@ -84,9 +88,14 @@ const unlikeSong = async (req, res) => {
 const isSongLiked = async (req, res) => {
     try {
         const { accountId, songId } = req.params;
+
+        // Kiểm tra xem tài khoản đã thích bài hát chưa
         const isLiked = await Favorite.exists({ account: accountId, song: songId });
-        return res.status(200).json(isLiked);
+
+        // Trả về true hoặc false dựa trên kết quả
+        return res.status(200).json(!!isLiked); // Sử dụng !! để chuyển đổi kết quả sang boolean
     } catch (error) {
+        console.error(error); // Ghi lỗi ra console để dễ theo dõi
         return res.status(500).json({ message: error.message });
     }
 };

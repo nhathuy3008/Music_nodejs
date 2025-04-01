@@ -6,6 +6,9 @@ const cloudinary = require('./cloudinary');
 const categoryRoutes = require("./routes/categoryRoutes");
 const songRoutes = require("./routes/songRoutes");
 const favoriteRoutes = require('./routes/favoriteRoutes');
+const commentRoutes = require('./routes/commentsRoutes')
+const multer = require('multer');
+
 require('dotenv').config(); // Nạp biến môi trường từ tệp .env
 
 const app = express();
@@ -13,7 +16,7 @@ const PORT = process.env.PORT || 3000; // Lấy cổng từ biến môi trườn
 
 // Cấu hình CORS
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:52957'], // Địa chỉ frontend
+    origin: ['http://localhost:3000', 'http://localhost:5173','http://127.0.0.1:5500'], // Địa chỉ frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Các phương thức HTTP được phép
     allowedHeaders: ['Content-Type'], // Các header được phép
     credentials: true, // Cho phép cookie và thông tin xác thực
@@ -27,6 +30,7 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api', songRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Kết nối đến MongoDB
 mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })

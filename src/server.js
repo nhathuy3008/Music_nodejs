@@ -1,3 +1,4 @@
+require('dotenv').config(); // Nạp biến môi trường từ tệp .env
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors'); // Thêm gói cors
@@ -7,9 +8,10 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const songRoutes = require("./routes/songRoutes");
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const commentRoutes = require('./routes/commentsRoutes')
+const playlistRoutes = require('./routes/playlistRoutes')
 const multer = require('multer');
 
-require('dotenv').config(); // Nạp biến môi trường từ tệp .env
+
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Lấy cổng từ biến môi trường hoặc mặc định là 3000
@@ -31,7 +33,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api', songRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/comments', commentRoutes);
-
+app.use('/api/playlists', playlistRoutes);
 // Kết nối đến MongoDB
 mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {

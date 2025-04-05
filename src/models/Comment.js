@@ -1,22 +1,21 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-// Định nghĩa mô hình Comment
 const commentSchema = new Schema({
     comment: {
         type: String,
-        required: [true, 'Bình luận bắt buộc điền'], // Thêm thông báo lỗi
+        required: [true, 'Bình luận bắt buộc điền'],
     },
     account: {
         type: Schema.Types.ObjectId,
-        ref: 'Account', // Tham chiếu đến mô hình Account
-        required: true, // Bắt buộc nếu cần
+        ref: 'Account',
+        required: true,
     },
     song: {
         type: Schema.Types.ObjectId,
-        ref: 'Song', // Tham chiếu đến mô hình Song
-        required: true, // Bắt buộc nếu cần
+        ref: 'Song',
+        required: true,
     },
-}, { timestamps: true }); // Tự động thêm createdAt và updatedAt
+}, { timestamps: true });
 
-module.exports = mongoose.model('Comment', commentSchema);
+module.exports = mongoose.models.Comment || mongoose.model('Comment', commentSchema);

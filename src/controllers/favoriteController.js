@@ -36,13 +36,20 @@ const likeSong = async (req, res) => {
 const getFavoriteSongs = async (req, res) => {
     try {
         const { accountId } = req.params;
+
+        // Lấy danh sách yêu thích, populate song
         const favorites = await Favorite.find({ account: accountId }).populate('song');
-        const favoriteSongs = favorites.map(fav => fav.song);
+        // Lọc bỏ các favorite có song là null (bị xóa)
+        const favoriteSongs = favorites
+            .filter(fav => fav.song !== null)
+            .map(fav => fav.song);
+
         return res.status(200).json(favoriteSongs);
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
+
 
 // Đếm số lượt thích cho bài hát
 const countLikesForSong = async (req, res) => {

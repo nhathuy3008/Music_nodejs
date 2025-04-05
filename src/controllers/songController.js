@@ -37,7 +37,7 @@ const createSong = async (req, res) => {
             url: musicResult.secure_url,
             image: imageUrl,
             category: req.body.category,
-            account: req.body.account, // 👈 Thêm dòng này
+            account: req.body.account || null,  // 👈 Thêm dòng này
             status: 'pending'
         });
 
@@ -84,15 +84,16 @@ const updateSong = async (req, res) => {
 const deleteSong = async (req, res) => {
     const { id } = req.params;
     try {
-        const song = await Song.findByIdAndDelete(id);
+        const song = await Song.findOneAndDelete({ _id: id, status: 'approved' });
         if (!song) {
-            return res.status(404).json({ message: 'Bài hát không tìm thấy' });
+            return res.status(404).json({ message: 'Bài hát không tìm thấy hoặc chưa được duyệt' });
         }
-        return res.status(200).json({ message: `Bài hát ${song.name} đã được xóa thành công!` });
+        return res.status(200).json({ message: `Bài hát "${song.name}" đã được xóa thành công!` });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
+
 // Tìm kiếm theo key
 const removeDiacritics = (str) => {
     return str

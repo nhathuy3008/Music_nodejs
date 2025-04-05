@@ -1,130 +1,150 @@
-require('dotenv').config();
-console.log("HUGGINGFACE_TOKEN from commentController:", process.env.HUGGINGFACE_TOKEN);
+require('dotenv').config(); // 👈 Đảm bảo load biến môi trường
+const axios = require('axios');
 
-
-const Comment = require('../models/Comment'); // Đảm bảo đường dẫn đến model là chính xác
 const Account = require('../models/Account');
 const Song = require('../models/Song');
-const axios = require('axios'); // Cài đặt axios nếu chưa có
+const Comment = require('../models/Comment');
+
+// Kiểm tra model load đúng chưa
+console.log("🧪 Comment model name thực sự là:", Comment.modelName); // Phải in ra 'Comment'
+console.log("🧠 Comment schema paths:", Object.keys(Comment.schema.paths)); 
 
 const HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/unitary/toxic-bert";
-const HUGGINGFACE_TOKEN = process.env.HUGGINGFACE_TOKEN; // Lấy từ biến môi trường
+const HUGGINGFACE_TOKEN = process.env.HUGGINGFACE_TOKEN;
 
-
-
-// Endpoint để tạo một bình luận mới
+// 🟢 Tạo bình luận mới
 const createComment = async (req, res) => {
     try {
-        const { comment, account, song } = req.body;
+        const { comment, accountId, songId } = req.body;
 
-        // Kiểm tra xem người dùng và bài hát có tồn tại không
-        const userAccount = await Account.findById(account);
-        const songRecord = await Song.findById(song);
-        
+        // Kiểm tra các tham số bắt buộc
+        if (!comment || !accountId || !songId) {
+            return res.status(400).json({ message: "Thiếu thông tin comment, accountId hoặc songId." });
+        }
+
+        // Kiểm tra tài khoản người dùng
+        const userAccount = await Account.findById(accountId);
         if (!userAccount) {
-            return res.status(400).json({ message: "Người dùng không tồn tại" });
+            return res.status(400).json({ message: "Người dùng không tồn tại." });
         }
-        
+
+        // Kiểm tra bài hát
+        const songRecord = await Song.findById(songId);
         if (!songRecord) {
-            return res.status(400).json({ message: "Bài hát không tồn tại" });
+            return res.status(400).json({ message: "Bài hát không tồn tại." });
         }
 
-        // Kiểm tra bình luận xem có phải là không phù hợp không
-        if (await isCommentInappropriate(comment)) {
-            return res.status(400).json({ message: getReplacementComment() }); // Trả về bình luận thay thế
+        // Kiểm tra bình luận độc hại (ví dụ như dùng API bên ngoài như HuggingFace)
+        const isToxic = await isCommentInappropriate(comment);
+        if (isToxic) {
+            return res.status(400).json({ message: "Bình luận này có nội dung độc hại." });
         }
 
-        // Tạo một bình luận mới
-        const newComment = new Comment({ comment, account: userAccount._id, song: songRecord._id });
-        
+        // Tạo và lưu bình luận
+        const newComment = new Comment({
+            comment,
+            account: userAccount._id,  // Đảm bảo bạn truyền đúng ObjectId của tài khoản
+            song: songRecord._id       // Đảm bảo bạn truyền đúng ObjectId của bài hát
+        });
+
         // Lưu bình luận vào cơ sở dữ liệu
         await newComment.save();
 
-        // Tăng commentCount của bài hát
-        songRecord.commentCount += 1;
-        await songRecord.save(); // Lưu thay đổi vào cơ sở dữ liệu
+        // Cập nhật số lượng bình luận cho bài hát
+        songRecord.commentCount = (songRecord.commentCount || 0) + 1;
+        await songRecord.save();
 
         return res.status(201).json({ message: "Bình luận đã được thêm thành công!" });
+        
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        console.error("❌ Lỗi khi tạo bình luận:", error);
+        return res.status(500).json({ message: "Đã xảy ra lỗi server.", error: error.message });
     }
 };
 
-// Hàm kiểm tra bình luận có phải là độc hại không
+
+
+
+
+// 🧠 Kiểm tra toxic comment bằng HuggingFace
 const isCommentInappropriate = async (comment) => {
-    if (!comment || comment.trim().length === 0) {
-        return false; // Không kiểm tra nếu bình luận rỗng
-    }
+    if (!comment || comment.trim().length === 0) return false;
 
     try {
-        const response = await axios.post(HUGGINGFACE_API_URL, {
-            inputs: comment,
-        }, {
-            headers: {
-                Authorization: `Bearer ${HUGGINGFACE_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await axios.post(
+            HUGGINGFACE_API_URL,
+            { inputs: comment },
+            {
+                headers: {
+                    Authorization: `Bearer ${HUGGINGFACE_TOKEN}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
 
-        if (response.status === 200) {
-            const toxicityScore = response.data[0][0].score; // Giả định rằng nhãn đầu tiên là nhãn "toxic"
-            return toxicityScore > 0.35; // Ngưỡng có thể điều chỉnh  
+        console.log("📦 HuggingFace Response:", JSON.stringify(response.data, null, 2));
+
+        if (Array.isArray(response.data) && response.data[0]?.[0]?.score !== undefined) {
+            const toxicityScore = response.data[0][0].score;
+            console.log("🧪 Toxicity Score:", toxicityScore);
+            return toxicityScore > 0.35;
+        } else {
+            console.warn("⚠️ Phản hồi không hợp lệ từ HuggingFace:", response.data);
+            return true;
         }
     } catch (error) {
-        console.error("Lỗi khi gửi yêu cầu đến API:", error.message);
-        return true; // Nếu có lỗi khi gửi yêu cầu, coi như bình luận là không phù hợp
+        console.error("⚠️ Lỗi từ HuggingFace API:", error.message);
+        return true;
     }
-    return false; // Mặc định không độc hại
 };
 
-// Hàm trả về bình luận thay thế
+// 📢 Thông điệp nếu comment không phù hợp
 const getReplacementComment = () => {
     return "Bạn hãy giữ bình tĩnh và comment văn minh hơn!";
 };
 
-// Các endpoint khác...
+// 📄 Lấy tất cả bình luận theo bài hát
 const getCommentsBySongId = async (req, res) => {
     try {
-        const songId = req.params.songId; // Lấy ID bài hát từ tham số
-
-        // Tìm tất cả bình luận cho bài hát
-        const comments = await Comment.find({ song: songId }).populate('account', 'fullName'); // Thay đổi để lấy tên người dùng
-
+        const songId = req.params.songId;
+        const comments = await Comment.find({ song: songId }).populate('account', 'fullName');
         return res.status(200).json(comments);
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        console.error("❌ Lỗi khi lấy bình luận:", error);
+        return res.status(500).json({ message: "Lỗi khi lấy bình luận." });
     }
 };
+
+// 🗑️ Xoá bình luận
 const deleteComment = async (req, res) => {
     try {
-        const commentId = req.params.id; // Lấy ID bình luận từ tham số
-
-        // Tìm và xóa bình luận
+        const commentId = req.params.id;
         const deletedComment = await Comment.findByIdAndDelete(commentId);
 
         if (!deletedComment) {
-            return res.status(404).json({ message: "Bình luận không tồn tại" });
+            return res.status(404).json({ message: "Bình luận không tồn tại." });
         }
 
-        // Cập nhật commentCount của bài hát nếu cần
+        // Giảm số lượng bình luận
         const songId = deletedComment.song;
-        await Song.findByIdAndUpdate(songId, { $inc: { commentCount: -1 } }); // Giảm commentCount
+        await Song.findByIdAndUpdate(songId, { $inc: { commentCount: -1 } });
 
-        return res.status(204).send(); // Trả về mã trạng thái 204 Không nội dung
+        return res.status(200).json({ message: "Đã xoá bình luận thành công." });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        console.error("❌ Lỗi khi xoá bình luận:", error);
+        return res.status(500).json({ message: "Lỗi khi xoá bình luận." });
     }
 };
+
+// 🔢 Đếm số bình luận theo bài hát
 const getCommentCountBySongId = async (req, res) => {
     try {
-        const songId = req.params.songId; // Lấy ID bài hát từ tham số
-
-        // Tính tổng số bình luận cho bài hát
+        const songId = req.params.songId;
         const count = await Comment.countDocuments({ song: songId });
-
-        return res.status(200).json({ count }); // Trả về số lượng bình luận
+        return res.status(200).json({ count });
     } catch (error) {
-        return res.status(500).json({ message: error.message });
+        console.error("❌ Lỗi khi đếm bình luận:", error);
+        return res.status(500).json({ message: "Lỗi khi đếm bình luận." });
     }
 };
 

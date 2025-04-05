@@ -3,7 +3,7 @@ const { sendVerificationEmail } = require('../services/emailService');
 const bcrypt = require('bcrypt');
 const cloudinary = require('../cloudinary');
 const fetch = require('node-fetch');
-
+const jwt = require('jsonwebtoken');
 // Tạo tài khoản
 const createAccount = async (req, res) => {
     const { fullName, email, password, image } = req.body;
@@ -91,40 +91,87 @@ const verifyAccount = async (req, res) => {
 };
 
 // Đăng nhập
+// const login = async (req, res) => {
+//     const { email, password } = req.body;
+//     const account = await Account.findOne({ email });
+
+//     if (!account) {
+//         return res.status(401).json({
+//             status: "thất bại",
+//             message: "Tài khoản không tồn tại hoặc chưa được xác thực."
+//         });
+//     }
+
+//     if (!account.enabled) {
+//         return res.status(401).json({
+//             status: "thất bại",
+//             message: "Tài khoản chưa được xác thực."
+//         });
+//     }
+
+//     const isMatch = await bcrypt.compare(password, account.password);
+//     if (!isMatch) {
+//         return res.status(401).json({
+//             status: "thất bại",
+//             message: "Mật khẩu không đúng."
+//         });
+//     }
+
+//     // Nếu đăng nhập thành công, trả về thông tin tài khoản
+//     res.status(200).json({
+//         id: account._id,
+//         fullName: account.fullName,
+//         image: account.image, // Trả về URL hình ảnh
+//         message: "Đăng nhập thành công",
+//         status: "thành công"
+//     });
+// };
 const login = async (req, res) => {
-    const { email, password } = req.body;
-    const account = await Account.findOne({ email });
+    try {
+        const { email, password } = req.body;
+        const account = await Account.findOne({ email }).populate('roles');
 
-    if (!account) {
-        return res.status(401).json({
-            status: "thất bại",
-            message: "Tài khoản không tồn tại hoặc chưa được xác thực."
+        if (!account) {
+            return res.status(401).json({
+                status: "thất bại",
+                message: "Tài khoản không tồn tại hoặc chưa được xác thực."
+            });
+        }
+
+        if (!account.enabled) {
+            return res.status(401).json({
+                status: "thất bại",
+                message: "Tài khoản chưa được xác thực."
+            });
+        }
+
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) {
+            return res.status(401).json({
+                status: "thất bại",
+                message: "Mật khẩu không đúng."
+            });
+        }
+
+        // Tạo token nếu đăng nhập thành công
+        const token = jwt.sign(
+            { id: account._id, roles: account.roles.map(role => role.name) },
+            process.env.JWT_SECRET,  // Lấy secret từ file .env
+            { expiresIn: '1h' } // Token có hiệu lực trong 1 giờ
+        );
+
+        res.status(200).json({
+            id: account._id,
+            fullName: account.fullName,
+            image: account.image, 
+            token, // Trả về token
+            message: "Đăng nhập thành công",
+            status: "thành công"
         });
-    }
 
-    if (!account.enabled) {
-        return res.status(401).json({
-            status: "thất bại",
-            message: "Tài khoản chưa được xác thực."
-        });
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi máy chủ", error: error.message });
     }
-
-    const isMatch = await bcrypt.compare(password, account.password);
-    if (!isMatch) {
-        return res.status(401).json({
-            status: "thất bại",
-            message: "Mật khẩu không đúng."
-        });
-    }
-
-    // Nếu đăng nhập thành công, trả về thông tin tài khoản
-    res.status(200).json({
-        id: account._id,
-        fullName: account.fullName,
-        image: account.image, // Trả về URL hình ảnh
-        message: "Đăng nhập thành công",
-        status: "thành công"
-    });
 };
 
 // Lấy thông tin tài khoản theo ID

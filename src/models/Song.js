@@ -34,6 +34,16 @@ const songSchema = new Schema({
     commentCount: {
         type: Number,
         default: 0, // Giá trị mặc định
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'], // Trạng thái: chờ duyệt, đã duyệt, bị từ chối
+        default: 'pending', // Mặc định là chờ duyệt
+    },
+    account: {
+        type: Schema.Types.ObjectId,
+        ref: 'Account',
+        required: true,
     }
 }, { timestamps: true }); // Tự động thêm createdAt và updatedAt
 

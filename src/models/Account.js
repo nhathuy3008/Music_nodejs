@@ -31,7 +31,11 @@ const accountSchema = new mongoose.Schema({
     verificationToken: {
         type: String,
         default: null
-    }
+    },
+    roles: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role'
+    }]
 });
 
 module.exports = mongoose.model('Account', accountSchema);

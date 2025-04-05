@@ -9,6 +9,8 @@ const songRoutes = require("./routes/songRoutes");
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const commentRoutes = require('./routes/commentsRoutes')
 const playlistRoutes = require('./routes/playlistRoutes')
+const roleRoutes = require('./routes/roleRoutes')
+const notificationRoutes = require('./routes/notificationRoutes')
 const multer = require('multer');
 
 
@@ -34,6 +36,8 @@ app.use('/api', songRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/playlists', playlistRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/notifications', notificationRoutes);
 // Kết nối đến MongoDB
 mongoose.connect('mongodb://localhost:27017/music', { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {

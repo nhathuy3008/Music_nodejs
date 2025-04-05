@@ -15,14 +15,10 @@ const playlistSchema = new Schema({
         type: String, // Tên nghệ sĩ
         required: [true, 'Tên nghệ sĩ là bắt buộc'],
     },
-    account: {
-        type: Schema.Types.ObjectId,
-        ref: 'Account', // Tham chiếu đến mô hình Account
-        required: true,
-    },
     songs: [{
         type: Schema.Types.ObjectId,
         ref: 'Song', // Tham chiếu đến mô hình Song
+        default: []
     }],
 }, { timestamps: true }); // Tự động thêm createdAt và updatedAt
 

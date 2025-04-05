@@ -1,41 +1,33 @@
 const Song = require('../models/Song');
 const cloudinary = require('../cloudinary');
 const { v4: uuidv4 } = require('uuid'); // Thư viện để tạo ID ngẫu nhiên
-
+const Notification = require('../models/Notification');
 // Thêm nhạc
+
 const createSong = async (req, res) => {
     try {
-        // Kiểm tra xem file có tồn tại không
         if (!req.files || !req.files.file) {
             return res.status(400).json({ message: 'File nhạc không được gửi.' });
         }
 
-        const musicFile = req.files.file[0]; // Lấy file nhạc từ req.files
+        const musicFile = req.files.file[0];
+        const musicBase64 = musicFile.buffer.toString('base64');
 
-        // Mã hóa file nhạc
-        const musicBuffer = musicFile.buffer; // Lấy buffer từ file nhạc
-        const musicBase64 = musicBuffer.toString('base64'); // Chuyển đổi sang base64
-
-        // Upload file nhạc lên Cloudinary
-        const musicResult = await cloudinary.uploader.upload(`data:${musicFile.mimetype};base64,${musicBase64}`, {
-            resource_type: 'auto',
-            public_id: uuidv4()
-        });
+        const musicResult = await cloudinary.uploader.upload(
+            `data:${musicFile.mimetype};base64,${musicBase64}`,
+            { resource_type: 'auto', public_id: uuidv4() }
+        );
 
         let imageUrl = null;
-
-        // Kiểm tra hình ảnh
         if (req.files.image && req.files.image.length > 0) {
-            const imageFile = req.files.image[0]; // Lấy file hình ảnh
-            const imageBuffer = imageFile.buffer; // Lấy buffer từ hình ảnh
-            const imageBase64 = imageBuffer.toString('base64'); // Chuyển đổi sang base64
+            const imageFile = req.files.image[0];
+            const imageBase64 = imageFile.buffer.toString('base64');
 
-            // Upload hình ảnh lên Cloudinary
-            const imageResult = await cloudinary.uploader.upload(`data:${imageFile.mimetype};base64,${imageBase64}`, {
-                resource_type: 'image',
-                public_id: uuidv4()
-            });
-            imageUrl = imageResult.secure_url; // Lưu URL hình ảnh
+            const imageResult = await cloudinary.uploader.upload(
+                `data:${imageFile.mimetype};base64,${imageBase64}`,
+                { resource_type: 'image', public_id: uuidv4() }
+            );
+            imageUrl = imageResult.secure_url;
         }
 
         const song = new Song({
@@ -44,24 +36,36 @@ const createSong = async (req, res) => {
             artist: req.body.artist,
             url: musicResult.secure_url,
             image: imageUrl,
-            category: req.body.category
+            category: req.body.category,
+            account: req.body.account, // 👈 Thêm dòng này
+            status: 'pending'
         });
 
         await song.save();
-        return res.status(201).json(song);
+        return res.status(201).json({ message: "Bài hát đang chờ xét duyệt!", song });
     } catch (error) {
         return res.status(400).json({ message: error.message });
     }
 };
+
 // Lấy tất cả bài hát
+// const getAllSongs = async (req, res) => {
+//     try {
+//         const songs = await Song.find(); // Lấy tất cả bài hát từ cơ sở dữ liệu
+//         return res.status(200).json(songs); // Trả về danh sách bài hát
+//     } catch (error) {
+//         return res.status(500).json({ message: error.message }); // Xử lý lỗi
+//     }
+// };
 const getAllSongs = async (req, res) => {
     try {
-        const songs = await Song.find(); // Lấy tất cả bài hát từ cơ sở dữ liệu
-        return res.status(200).json(songs); // Trả về danh sách bài hát
+        const songs = await Song.find({ status: 'approved' });
+        return res.status(200).json(songs);
     } catch (error) {
-        return res.status(500).json({ message: error.message }); // Xử lý lỗi
+        return res.status(500).json({ message: error.message });
     }
 };
+
 // Cập nhật nhạc
 const updateSong = async (req, res) => {
     const { id } = req.params;
@@ -131,6 +135,82 @@ const playSongById = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 };
+const playSongByIdPending = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const song = await Song.findOne({ _id: id, status: 'pending' });
+        if (!song) {
+            return res.status(404).json({ message: 'Bài hát không có trong trạng thái pending' });
+        }
+        return res.status(200).json({ url: song.url });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const updateSongStatus = async (req, res) => {
+    try {
+        const { songId } = req.params;
+        const { status } = req.body;
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Trạng thái không hợp lệ!' });
+        }
+
+        const song = await Song.findById(songId).populate('account');
+        if (!song) {
+            return res.status(404).json({ message: 'Bài hát không tồn tại!' });
+        }
+
+        song.status = status;
+        await song.save();
+
+        // Gửi thông báo
+        const statusText = status === 'approved' ? 'được duyệt' : 'bị từ chối';
+        const message = `Bài hát "${song.name}" của bạn đã ${statusText}.`;
+
+        await Notification.create({
+            account: song.account._id,
+            message: message,
+        });
+
+        return res.status(200).json({ message: `Bài hát đã được cập nhật thành ${status}.`, song });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+const getAllSongsPending = async (req, res) => {
+    try {
+        const songs = await Song.find({ status: 'pending' });
+        return res.status(200).json(songs);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+const getSongById = async (req, res) => {
+    try {
+      const songId = req.params.id;
+      const song = await Song.findById(songId);
+  
+      if (!song) {
+        return res.status(404).json({ message: 'Song not found' });
+      }
+  
+      res.json(song); // Trả về bài hát dưới dạng JSON
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
+};
+const getPopularSongs = async (req, res) => {
+    try {
+        // Chỉ lấy các bài hát đã được duyệt và có số lượt like >= 1
+        const songs = await Song.find({ status: 'approved', likeCount: { $gte: 1 } });
+        return res.status(200).json(songs);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
 
 // Xuất khẩu các hàm
 module.exports = {
@@ -139,5 +219,10 @@ module.exports = {
     deleteSong,
     searchSongs,
     playSongById, // Đảm bảo hàm này có ở đây
-    getAllSongs
+    getAllSongs,
+    updateSongStatus,
+    getAllSongsPending,
+    playSongByIdPending,
+    getSongById,
+    getPopularSongs
 };

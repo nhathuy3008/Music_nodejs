@@ -4,16 +4,20 @@ const {
     getPlaylistById,
     createPlaylist,
     addSongToPlaylist,
-    getSongsInPlaylist
+    getSongsInPlaylist,
+    getSongsByArtist
 } = require('../controllers/playlistController');
 
 const router = express.Router();
 
-router.get('/', getAllPlaylists); // Lấy tất cả playlist
-router.get('/:id', getPlaylistById); // Lấy playlist theo ID
-router.post('/create', createPlaylist); // Tạo playlist mới
-router.post('/add-song', addSongToPlaylist);
+// Route cụ thể nên đặt trước
+router.get('/songs', getSongsByArtist);
+router.get('/', getAllPlaylists);
 router.get('/:playlistId/songs', getSongsInPlaylist);
+router.post('/create', createPlaylist);
+router.post('/add-song', addSongToPlaylist);
 
+// Route động nên đặt sau cùng
+router.get('/:id', getPlaylistById);
 
 module.exports = router;

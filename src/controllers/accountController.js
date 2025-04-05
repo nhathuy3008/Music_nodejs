@@ -1,6 +1,6 @@
 const Account = require('../models/Account');
 const { sendVerificationEmail } = require('../services/emailService');
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcryptjs");
 const cloudinary = require('../cloudinary');
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
